@@ -1,4 +1,4 @@
-django==2.1.2  # Web framework
+django==2.2.10  # Web framework
 redis==2.10.6  # Redis driver
 psycopg2-binary==2.7.4  # PostgreSQL driver
 
