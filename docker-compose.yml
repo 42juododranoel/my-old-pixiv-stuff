@@ -1,0 +1,76 @@
+version: '3.4'
+
+x-django-build:
+  &django-build
+  context: ./django/
+  target: ${MODE}
+  args:
+    HOST_USER_ID: ${HOST_USER_ID}
+
+x-django-environment:
+  &django-environment
+  - MODE
+  - PROJECT_NAME
+  - DATABASE_HOST
+  - DATABASE_NAME
+  - DATABASE_PORT
+  - DATABASE_USER
+  - DATABASE_PASSWORD
+  - DJANGO_DEBUG
+  - DJANGO_SECRET_KEY
+  - MASTODON_BASE_URL
+  - MASTODON_ACCESS_TOKEN
+  - PIXIV_USERNAME
+  - PIXIV_PASSWORD
+  - BROKER_HOST
+  - BROKER_PORT
+  - BROKER_QUEUE
+
+x-django-volumes:
+  &django-volumes
+  - ${DIRECTORY}/django/application:/application
+
+x-celery-depends_on:
+  &celery-depends_on
+  - redis
+
+
+services:
+  django:
+    build: *django-build
+    volumes: *django-volumes
+    environment: *django-environment
+    depends_on:
+      - postgres
+      - redis
+
+  celery-beat:
+    build: *django-build
+    volumes: *django-volumes
+    environment: *django-environment
+    depends_on: *celery-depends_on
+    command: celery -A ${PROJECT_NAME} beat -l warning --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+  celery-worker-default:
+    build: *django-build
+    volumes: *django-volumes
+    environment: *django-environment
+    depends_on: *celery-depends_on
+    command: celery -A ${PROJECT_NAME} worker -l warning -Q default -P gevent
+
+  celery-worker-downloads:
+    build: *django-build
+    volumes: *django-volumes
+    environment: *django-environment
+    depends_on: *celery-depends_on
+    command: celery -A ${PROJECT_NAME} worker -l warning -Q downloads -P gevent -c 2
+
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_DB=${DATABASE_NAME}
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+
+  redis:
+    image: redis:4.0.11

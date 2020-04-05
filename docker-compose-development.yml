@@ -1,0 +1,7 @@
+version: '3.4'
+
+services:
+  django:
+    ports:
+      - 8000:8000
+    command: sleep 1d
